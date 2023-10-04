@@ -3,6 +3,8 @@
 #include <thread>
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
+#include <ctime>
 
 const int K = 10000000;
 const int N1 = 1000;
@@ -18,23 +20,36 @@ int main()
 {
     std::vector<int> array(K);
 
-    // Заполняем массив случайными числами
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
     for (int i = 0; i < K; ++i)
     {
-        array[i] = rand() % 1000000;
+        array[i] = std::rand() % 1000000;
+    }
+
+    int numThreads;
+    std::cout << "Р’РІРµРґРёС‚Рµ РєРѕР»РёС‡РµСЃС‚РІРѕ РїРѕС‚РѕРєРѕРІ (1, 2, 4 РёР»Рё 10): ";
+    std::cin >> numThreads;
+
+    if (numThreads != 1 && numThreads != 2 && numThreads != 4 && numThreads != 10)
+    {
+        std::cout << "РќРµРІРµСЂРЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ РїРѕС‚РѕРєРѕРІ. Р”РѕРїСѓСЃС‚РёРјС‹Рµ Р·РЅР°С‡РµРЅРёСЏ: 1, 2, 4, 10." << std::endl;
+        return 1;
     }
 
     std::vector<std::thread> threads;
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    // Запускаем потоки для сортировки разных порций массива
-    threads.emplace_back(sortSubarray, std::ref(array), 500, 750);
-    threads.emplace_back(sortSubarray, std::ref(array), N1, N1 + 500);
-    threads.emplace_back(sortSubarray, std::ref(array), N1 + N2, N1 + N2 + 250);
-    threads.emplace_back(sortSubarray, std::ref(array), N1 + N2 + N3, N1 + N2 + N3 + 250);
+    int portionSize = K / numThreads;
+    
+    for (int i = 0; i < numThreads; ++i)
+    {
+        int start = i * portionSize;
+        int end = (i == numThreads - 1) ? K : (i + 1) * portionSize;
+        threads.emplace_back(sortSubarray, std::ref(array), start, end);
+    }
 
-    // Дожидаемся завершения всех потоков
     for (auto &thread : threads)
     {
         thread.join();
@@ -43,14 +58,14 @@ int main()
     auto end_time = std::chrono::high_resolution_clock::now();
     auto execution_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
 
-    // Выводим содержимое массива с 500 по 750 элемент
+    std::cout << "РЎРѕРґРµСЂР¶РёРјРѕРµ РјР°СЃСЃРёРІР° РѕС‚ 500 РґРѕ 750 СЌР»РµРјРµРЅС‚РѕРІ:" << std::endl;
     for (int i = 500; i <= 750; ++i)
     {
         std::cout << array[i] << " ";
     }
     std::cout << std::endl;
 
-    std::cout << "Время выполнения программы: " << execution_time << " миллисекунд" << std::endl;
+    std::cout << "Р’СЂРµРјСЏ РІС‹РїРѕР»РЅРµРЅРёСЏ РѕРїРµСЂР°С†РёРё СЃРѕСЂС‚РёСЂРѕРІРєРё: " << execution_time << " РјРёР»Р»РёСЃРµРєСѓРЅРґ." << std::endl;
 
     return 0;
 }
