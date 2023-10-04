@@ -1,71 +1,72 @@
 #include <iostream>
 #include <vector>
-#include <thread>
 #include <algorithm>
-#include <chrono>
+#include <thread>
 #include <cstdlib>
 #include <ctime>
+#include <chrono>
+
+using namespace std;
 
 const int K = 10000000;
-const int N1 = 1000;
-const int N2 = 500;
-const int N3 = 250;
+const int N_values[] = {1000, 500, 250};
 
-void sortSubarray(std::vector<int> &array, int start, int end)
-{
-    std::sort(array.begin() + start, array.begin() + end);
+vector<int> generateRandomArray(int size) {
+    vector<int> arr(size);
+    for (int i = 0; i < size; ++i) {
+        arr[i] = rand();
+    }
+    return arr;
 }
 
-int main()
-{
-    std::vector<int> array(K);
+void sortArrayInChunks(vector<int>& arr, int N, int numThreads) {
+    int chunkSize = arr.size() / numThreads;
+    vector<thread> threads;
 
-    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+    for (int i = 0; i < numThreads; ++i) {
+        int startIdx = i * chunkSize;
+        int endIdx = (i == numThreads - 1) ? arr.size() : startIdx + chunkSize;
 
-    for (int i = 0; i < K; ++i)
-    {
-        array[i] = std::rand() % 1000000;
+        threads.emplace_back([&arr, startIdx, endIdx, N]() {
+            sort(arr.begin() + startIdx, arr.begin() + endIdx);
+        });
     }
 
-    int numThreads;
-    std::cout << "Введите количество потоков (1, 2, 4 или 10): ";
-    std::cin >> numThreads;
+    for (auto& thread : threads) {
+        thread.join();
+    }
+}
 
-    if (numThreads != 1 && numThreads != 2 && numThreads != 4 && numThreads != 10)
-    {
-        std::cout << "Неверное количество потоков. Допустимые значения: 1, 2, 4, 10." << std::endl;
+int main() {
+    srand(static_cast<unsigned>(time(nullptr)));
+
+    vector<int> arr = generateRandomArray(K);
+
+    int numThreads;
+    cout << "Введите количество потоков (1, 2, 4 или 10): ";
+    cin >> numThreads;
+
+    if (numThreads != 1 && numThreads != 2 && numThreads != 4 && numThreads != 10) {
+        cout << "Некорректное количество потоков. Выход из программы." << endl;
         return 1;
     }
 
-    std::vector<std::thread> threads;
+    for (int N : N_values) {
+        auto startTime = chrono::high_resolution_clock::now();
 
-    auto start_time = std::chrono::high_resolution_clock::now();
+        sortArrayInChunks(arr, N, numThreads);
 
-    int portionSize = K / numThreads;
-    
-    for (int i = 0; i < numThreads; ++i)
-    {
-        int start = i * portionSize;
-        int end = (i == numThreads - 1) ? K : (i + 1) * portionSize;
-        threads.emplace_back(sortSubarray, std::ref(array), start, end);
+        auto endTime = chrono::high_resolution_clock::now();
+        auto duration = chrono::duration_cast<chrono::milliseconds>(endTime - startTime);
+
+        cout << "Сортировка для N = " << N << " заняла " << duration.count() << " миллисекунд." << endl;
     }
 
-    for (auto &thread : threads)
-    {
-        thread.join();
+    cout << "Содержимое массива с 500 по 750 элемент: ";
+    for (int i = 500; i <= 750; ++i) {
+        cout << arr[i] << " ";
     }
-
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto execution_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-
-    std::cout << "Содержимое массива от 500 до 750 элементов:" << std::endl;
-    for (int i = 500; i <= 750; ++i)
-    {
-        std::cout << array[i] << " ";
-    }
-    std::cout << std::endl;
-
-    std::cout << "Время выполнения операции сортировки: " << execution_time << " миллисекунд." << std::endl;
+    cout << endl;
 
     return 0;
 }
